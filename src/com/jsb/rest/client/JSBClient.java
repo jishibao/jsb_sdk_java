@@ -11,7 +11,6 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import net.sf.json.JSONObject;
-import net.sf.json.JsonConfig;
 
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.log4j.Logger;
@@ -38,8 +37,6 @@ public class JSBClient
     
     private static String JSBServer = "http://120.55.113.176/JSB/rest/";
     
-    private JsonConfig jsConfig;
-    
     public static void setServerUrl(String url)
     {
         JSBServer = url;
@@ -57,8 +54,6 @@ public class JSBClient
         this.setAccessKey(ak);
         this.setSecretKey(sk);
         client = WebClient.create(JSBServer);
-        jsConfig = new JsonConfig();
-        jsConfig.setExcludes(new String[] {"success"});
     }
     
     /**
@@ -178,8 +173,7 @@ public class JSBClient
             localResponse.setMsg(e.getMessage());
             return localResponse;
         }
-    }   
-    
+    }
     
     /**
      * 执行请求

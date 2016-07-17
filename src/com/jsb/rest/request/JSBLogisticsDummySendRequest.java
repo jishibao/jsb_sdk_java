@@ -5,7 +5,7 @@ import com.taobao.api.ApiRuleException;
 import com.taobao.api.internal.util.RequestCheckUtils;
 import com.taobao.api.response.LogisticsDummySendResponse;
 
-public class JSBRestLogisticsDummySendRequest extends JSBRequest<LogisticsDummySendResponse>
+public class JSBLogisticsDummySendRequest extends JSBRequest<LogisticsDummySendResponse>
 {
     
     @Override

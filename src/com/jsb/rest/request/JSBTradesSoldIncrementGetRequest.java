@@ -3,11 +3,11 @@ package com.jsb.rest.request;
 import com.jsb.rest.client.JSBHttpMethod;
 import com.taobao.api.ApiRuleException;
 import com.taobao.api.internal.util.RequestCheckUtils;
-import com.taobao.api.response.TradesSoldGetResponse;
+import com.taobao.api.response.TradesSoldIncrementGetResponse;
 
-public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
+public class JSBTradesSoldIncrementGetRequest extends JSBRequest<TradesSoldIncrementGetResponse>
 {
-    public JSBTradeSoldGetRequest()
+    public JSBTradesSoldIncrementGetRequest()
     {
         super();
     }
@@ -17,14 +17,14 @@ public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
         queryMaps.put("fields", fields);
     }
     
-    public void setStartCreated(String start_created)
+    public void setStartModified(String start_modified)
     {
-        queryMaps.put("start_created", start_created);
+        queryMaps.put("start_modified", start_modified);
     }
     
-    public void setEndCreated(String end_created)
+    public void setEndModified(String end_modified)
     {
-        queryMaps.put("end_created", end_created);
+        queryMaps.put("end_modified", end_modified);
     }
     
     public void setStatus(String status)
@@ -67,7 +67,7 @@ public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
         queryMaps.put("page_size", String.valueOf(page_size));
     }
     
-    public void setHasNext(Boolean use_has_next)
+    public void setUseHasNext(Boolean use_has_next)
     {
         queryMaps.put("use_has_next", String.valueOf(use_has_next));
     }
@@ -75,7 +75,7 @@ public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
     @Override
     public String getResourceUrl()
     {
-        return "trade/TradesSoldGetRequest";
+        return "trade/TradesSoldIncrementGetRequest";
     }
     
     @Override
@@ -85,9 +85,9 @@ public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
     }
     
     @Override
-    public Class<TradesSoldGetResponse> getResponseClass()
+    public Class<TradesSoldIncrementGetResponse> getResponseClass()
     {
-        return TradesSoldGetResponse.class;
+        return TradesSoldIncrementGetResponse.class;
     }
     
     @Override
@@ -95,6 +95,8 @@ public class JSBTradeSoldGetRequest extends JSBRequest<TradesSoldGetResponse>
         throws ApiRuleException
     {
         RequestCheckUtils.checkNotEmpty(queryMaps.get("fields"), "fields");
+        RequestCheckUtils.checkNotEmpty(queryMaps.get("start_modified"), "start_modified");
+        RequestCheckUtils.checkNotEmpty(queryMaps.get("end_modified"), "end_modified");
     }
     
 }
