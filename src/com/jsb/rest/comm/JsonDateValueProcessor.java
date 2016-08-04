@@ -8,7 +8,11 @@ import net.sf.json.processors.JsonValueProcessor;
 
 
 public class JsonDateValueProcessor implements JsonValueProcessor
-{    
+{
+    
+    /**
+     * paramString -> 参数名 paramObject -> 参数值
+     */
     @Override
     public Object processObjectValue(String paramString, Object paramObject, JsonConfig paramJsonConfig)
     {

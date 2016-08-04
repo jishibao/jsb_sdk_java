@@ -5,12 +5,14 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 
 import net.sf.json.JSONObject;
+import net.sf.json.JsonConfig;
 
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.log4j.Logger;
@@ -20,6 +22,7 @@ import com.jsb.rest.comm.JSBUtils;
 import com.jsb.rest.comm.JSONHelper;
 import com.jsb.rest.comm.auth.JSBAuthInfo;
 import com.jsb.rest.request.JSBRequest;
+import com.taobao.api.ApiRuleException;
 import com.taobao.api.TaobaoParser;
 import com.taobao.api.TaobaoRequest;
 import com.taobao.api.TaobaoResponse;
@@ -35,7 +38,9 @@ public class JSBClient
     
     private String secretKey;
     
-    private static String JSBServer = "http://120.55.113.176/JSB/rest/";
+    private static String JSBServer = "http://120.55.246.87/JSB/rest/";
+    
+    private JsonConfig jsConfig;
     
     public static void setServerUrl(String url)
     {
@@ -54,6 +59,8 @@ public class JSBClient
         this.setAccessKey(ak);
         this.setSecretKey(sk);
         client = WebClient.create(JSBServer);
+        jsConfig = new JsonConfig();
+        jsConfig.setExcludes(new String[] {"success"});
     }
     
     /**
@@ -127,6 +134,7 @@ public class JSBClient
         throws JSBRestException
     {
         String requestId = UUID.randomUUID().toString();
+        
         client.header("x-jsb-sdk-req-uuid", requestId);
         client.header("x-jsb-sdk-req-timestamp", JSBUtils.getGmtTimeStr());
         client.path("/" + jsbReq.getResourceUrl());
@@ -137,11 +145,15 @@ public class JSBClient
             jsbReq.checkParameter();
             JSBAuthInfo auth = generateAuthInfo(jsbReq.getMethod().toString(), requestId);
             client.header("Authorization", auth.getAuthorizationContent()); // 设置鉴权信息头部
+            if (null != jsbReq.getType())
+            {
+                client.type(jsbReq.getType());
+            }
             Response respa = null;
             switch (jsbReq.getMethod())
             {
                 case JSB_METHOD_PUT:
-                    respa = client.put(null);
+                    respa = client.put(jsbReq.getEntity());
                     break;
                 case JSB_METHOD_POST:
                     break;
@@ -152,14 +164,17 @@ public class JSBClient
                     throw new JSBRestException("invalid method");
             }
             String resp = respa.readEntity(String.class);
+            System.out.println(resp);
             TaobaoParser<T> parser = new ObjectJsonParser<T>(jsbReq.getResponseClass(), false);
             T respObj = parser.parse(resp);
             respObj.setBody(resp);
             client.close();
+            jsbReq.postHandler();
             return respObj;
         }
         catch (Exception e)
         {
+            e.printStackTrace();
             T localResponse = null;
             try
             {
@@ -175,14 +190,30 @@ public class JSBClient
         }
     }
     
+    public String testSign(String key)
+        throws Exception
+    {
+        this.setSecretKey(key);
+        String requestId = UUID.randomUUID().toString();
+        client.header("x-jsb-sdk-req-uuid", requestId);
+        client.header("x-jsb-sdk-req-timestamp", JSBUtils.getGmtTimeStr());
+        // 设置资源路径
+        client.path("/sign_test");
+        JSBAuthInfo auth = generateAuthInfo(JSBHttpMethod.JSB_METHOD_PUT.toString(), requestId);
+        client.header("Authorization", auth.getAuthorizationContent()); // 设置鉴权信息头部
+        Response respa = client.put(null);
+        client.close();
+        return respa.readEntity(String.class);
+    }
+    
     /**
-     * 执行请求
-     * 
+     * 执行请求: 旧版本的执行方法，服务端返回的是整个Response
+     *
      * @param req
      * @return
      * @throws Exception
      */
-    public <T extends TaobaoResponse> T execute(TaobaoRequest<T> req)
+    public <T extends TaobaoResponse> T execute_old(TaobaoRequest<T> req, boolean v1)
         throws JSBRestException
     {
         try
@@ -198,7 +229,7 @@ public class JSBClient
             client.header("x-jsb-sdk-req-timestamp", JSBUtils.getGmtTimeStr());
             
             // 设置资源路径
-            client.path("/top/v1");
+            client.path("/top");
             
             // 计算签名
             JSBAuthInfo auth;
@@ -207,7 +238,79 @@ public class JSBClient
             
             // 执行请求
             String resp = null;
-            Response respa = client.put(JSONObject.fromObject(req, JSONHelper.jsonConfig).toString());
+            Response respa = client.put(JSONObject.fromObject(req, JSONHelper.dateFormaterConfig).toString());
+            resp = respa.readEntity(String.class);
+            logger.debug(req.getResponseClass().getCanonicalName() + " response:" + resp);
+            JSONObject jo = JSONObject.fromObject(resp, jsConfig);
+            Map<String, Class<?>> respClassMap = JSONHelper.getMap(req.getResponseClass().getCanonicalName());
+            @SuppressWarnings("unchecked")
+            T lcgResp = (T)JSONObject.toBean(jo, req.getResponseClass(), respClassMap);
+            TaobaoBeanUtils.fixSuccessFiled(lcgResp);
+            client.close();
+            return lcgResp;
+        }
+        catch (ApiRuleException e)
+        {
+            T localResponse = null;
+            try
+            {
+                localResponse = req.getResponseClass().newInstance();
+            }
+            catch (Exception xe)
+            {
+                throw new JSBRestException(xe);
+            }
+            localResponse.setErrorCode(e.getErrCode());
+            localResponse.setMsg(e.getErrMsg());
+            return localResponse;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            throw new JSBRestException("execute request error");
+        }
+    }
+    
+    public <T extends TaobaoResponse> T execute(TaobaoRequest<T> req)
+        throws JSBRestException
+    {
+        return execute(req, "/top/v1");
+    }
+    
+    /**
+     * 执行请求
+     * 
+     * @param req
+     * @return
+     * @throws Exception
+     */
+    public <T extends TaobaoResponse> T execute(TaobaoRequest<T> req, String path)
+        throws JSBRestException
+    {
+        try
+        {
+            logger.debug("execute taobao request:" + req.getApiMethodName());
+            
+            // 参数检查
+            req.check();
+            
+            // 设置基本的头域
+            String requestId = UUID.randomUUID().toString();
+            client.header("x-jsb-sdk-req-uuid", requestId);
+            client.header("x-jsb-sdk-req-timestamp", JSBUtils.getGmtTimeStr());
+            // 设置资源路径
+            client.path(path);
+            
+            // 计算签名
+            JSBAuthInfo auth;
+            auth = generateAuthInfo(JSBHttpMethod.JSB_METHOD_PUT.toString(), requestId);
+            client.header("Authorization", auth.getAuthorizationContent()); // 设置鉴权信息头部
+            
+            // 执行请求
+            String resp = null;
+            String reqString = JSONObject.fromObject(req, JSONHelper.dateFormaterConfig).toString();
+            System.out.println(reqString);
+            Response respa = client.put(reqString);
             resp = respa.readEntity(String.class);
             logger.debug(req.getResponseClass().getCanonicalName() + " response:" + resp);
             TaobaoParser<T> parser = new ObjectJsonParser<T>(req.getResponseClass(), false);
@@ -252,5 +355,4 @@ public class JSBClient
     {
         this.secretKey = secretKey;
     }
-    
 }

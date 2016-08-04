@@ -23,6 +23,12 @@ public abstract class JSBRequest<T extends TaobaoResponse>
     
     public abstract Class<T> getResponseClass();
     
+    public abstract Object getEntity();
+    
+    public abstract void postHandler();
+    
+    public abstract String getType();
+    
     public abstract void checkParameter() throws ApiRuleException;
     
     public String getQueryStr()
